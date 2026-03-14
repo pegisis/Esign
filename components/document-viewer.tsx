@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Document, Page, pdfjs } from "react-pdf"
-import { Download, ZoomIn, ZoomOut, FileSignature, ChevronLeft, ChevronRight, X, Pencil, Trash2 } from "lucide-react"
+import { Download, ZoomIn, ZoomOut, FileSignature, ChevronLeft, ChevronRight, X, Pencil, Trash2, Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { SignatureModal } from "./signature-modal"
 import { cn } from "@/lib/utils"
+import { SendDocumentModal } from "./senddocumentmodal"
 
 
 // Set up the worker
@@ -45,6 +46,7 @@ export function DocumentViewer({ documentUrl, documentName, documentType }: Docu
   const [numPages, setNumPages] = useState<number>(1)
   const [currentPage, setCurrentPage] = useState<number>(1)
   const containerRef = useRef<HTMLDivElement>(null)
+   const [isSendModalOpen, setIsSendModalOpen] = useState(false) 
 
   const isPdf = documentType === "application/pdf" || documentName.toLowerCase().endsWith(".pdf")
 
@@ -436,6 +438,13 @@ export function DocumentViewer({ documentUrl, documentName, documentType }: Docu
           </Button>
           <div className="mx-2 h-6 w-px bg-border" />
           <Button
+            onClick={() => setIsSendModalOpen(true)}
+            className="gap-2 bg-teal-500 hover:bg-primary text-white border-0 bg-primary"
+          >
+            <Send className="h-4 w-4" />
+            Send
+          </Button>
+          <Button
             onClick={() => setIsModalOpen(true)}
             className="gap-2"
           >
@@ -634,13 +643,27 @@ export function DocumentViewer({ documentUrl, documentName, documentType }: Docu
         </div>
       </div>
 
-      <SignatureModal
+       <SignatureModal
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false)
-          setEditingId(null)
-        }}
+        onClose={() => { setIsModalOpen(false); setEditingId(null) }}
         onSign={handleUpdateSignature}
+      />
+ 
+      {/* ── NEW: Send Document Modal ── */}
+      <SendDocumentModal
+        isOpen={isSendModalOpen}
+        onClose={() => setIsSendModalOpen(false)}
+        documentName={documentName}
+        documentUrl={documentUrl}
+        onSend={async (payload) => {
+          // Wire to your backend here, e.g.:
+          // await fetch("/api/send-document", {
+          //   method: "POST",
+          //   headers: { "Content-Type": "application/json" },
+          //   body: JSON.stringify(payload),
+          // })
+          console.log("Send payload:", payload)
+        }}
       />
     </div>
   )
