@@ -46,7 +46,7 @@ export function DocumentViewer({ documentUrl, documentName, documentType }: Docu
   const [numPages, setNumPages] = useState<number>(1)
   const [currentPage, setCurrentPage] = useState<number>(1)
   const containerRef = useRef<HTMLDivElement>(null)
-   const [isSendModalOpen, setIsSendModalOpen] = useState(false) 
+  const [isSendModalOpen, setIsSendModalOpen] = useState(false)
 
   const isPdf = documentType === "application/pdf" || documentName.toLowerCase().endsWith(".pdf")
 
@@ -59,6 +59,21 @@ export function DocumentViewer({ documentUrl, documentName, documentType }: Docu
 
   const goToPrevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1))
   const goToNextPage = () => setCurrentPage((prev) => Math.min(prev + 1, numPages))
+
+  async function getPdfBase64(url: string) {
+    const res = await fetch(url)
+    const blob = await res.blob()
+
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const base64 = (reader.result as string).split(",")[1]
+        resolve(base64)
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  }
 
   const handleAddSignature = (
     content: string,
@@ -439,7 +454,7 @@ export function DocumentViewer({ documentUrl, documentName, documentType }: Docu
           <div className="mx-2 h-6 w-px bg-border" />
           <Button
             onClick={() => setIsSendModalOpen(true)}
-            className="gap-2 bg-teal-500 hover:bg-primary text-white border-0 bg-primary"
+            className="gap-2  hover:bg-primary text-white border-0 bg-primary"
           >
             <Send className="h-4 w-4" />
             Send
@@ -643,12 +658,12 @@ export function DocumentViewer({ documentUrl, documentName, documentType }: Docu
         </div>
       </div>
 
-       <SignatureModal
+      <SignatureModal
         isOpen={isModalOpen}
         onClose={() => { setIsModalOpen(false); setEditingId(null) }}
         onSign={handleUpdateSignature}
       />
- 
+
       {/* ── NEW: Send Document Modal ── */}
       <SendDocumentModal
         isOpen={isSendModalOpen}
@@ -656,13 +671,26 @@ export function DocumentViewer({ documentUrl, documentName, documentType }: Docu
         documentName={documentName}
         documentUrl={documentUrl}
         onSend={async (payload) => {
-          // Wire to your backend here, e.g.:
-          // await fetch("/api/send-document", {
-          //   method: "POST",
-          //   headers: { "Content-Type": "application/json" },
-          //   body: JSON.stringify(payload),
-          // })
-          console.log("Send payload:", payload)
+          try {
+            const pdfBase64 = await getPdfBase64(documentUrl)
+
+            await fetch("http://localhost:3000/api/sent-document", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                recipients: payload.recipients,
+                ccEmails: payload.ccEmails,
+                subject: payload.subject,
+                message: payload.message,
+                pdfBase64,
+                fileName: documentName,
+              }),
+            })
+          } catch (error) {
+            console.error(error)
+          }
         }}
       />
     </div>
